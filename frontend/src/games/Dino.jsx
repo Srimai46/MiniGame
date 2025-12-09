@@ -3,16 +3,22 @@ import { useEffect, useRef, useState } from 'react';
 export default function Dino() {
   const canvasRef = useRef(null);
   
-  // ใช้ State แค่จัดการสถานะเกมและคะแนนตอนจบ (เพื่อไม่ให้ Re-render บ่อย)
+  // Game States
   const [gameState, setGameState] = useState('START'); // 'START', 'PLAYING', 'GAMEOVER'
-  const [finalScore, setFinalScore] = useState(0);
+  const [score, setScore] = useState(0);
+  const [highScore, setHighScore] = useState(0);
 
-  // ใช้ Ref เก็บค่าต่างๆ ที่เปลี่ยนแปลงตลอดเวลาใน Game Loop
+  // Refs for Game Logic
   const scoreRef = useRef(0);
   const requestRef = useRef();
 
+  // Load High Score on Mount
   useEffect(() => {
-    // ถ้าสถานะไม่ใช่ PLAYING ให้จบ useEffect นี้ไปเลย (ไม่รัน Loop)
+    const saved = localStorage.getItem('dinoHighScore');
+    if (saved) setHighScore(parseInt(saved));
+  }, []);
+
+  useEffect(() => {
     if (gameState !== 'PLAYING') return;
 
     const canvas = canvasRef.current;
@@ -21,24 +27,37 @@ export default function Dino() {
     // --- Config ---
     const GROUND_Y = 250;
     const GRAVITY = 0.6;
-    const JUMP_FORCE = -10;
+    const JUMP_FORCE = -11;
     
-    // --- Game Variables (Local Scope) ---
-    // ตัวแปรพวกนี้อยู่ใน Scope ของ useEffect นี้เท่านั้น ไม่ต้องใช้ useRef ก็ได้เพราะมันจะถูกสร้างใหม่เมื่อเริ่มเกม
-    let dino = { x: 50, y: GROUND_Y, w: 40, h: 40, vy: 0, isJumping: false };
+    // --- Game Variables ---
+    // Dino
+    let dino = { x: 50, y: GROUND_Y, w: 40, h: 40, vy: 0, isJumping: false, frame: 0 };
+    
+    // Obstacles
     let obstacles = [];
-    let gameSpeed = 4;
+    
+    // Background Elements (Clouds)
+    let clouds = [
+        { x: 100, y: 50, speed: 0.5 },
+        { x: 300, y: 80, speed: 0.3 },
+        { x: 500, y: 40, speed: 0.6 },
+    ];
+
+    let gameSpeed = 5;
     let lastTime = performance.now();
     let spawnTimer = 0;
-    let nextSpawnTime = Math.random() * 1000 + 1500; // สุ่มเวลาเกิด 1.5 - 2.5 วิ
+    let nextSpawnTime = Math.random() * 1000 + 1500;
 
     // --- Functions ---
+
     const spawnObstacle = () => {
-      const type = Math.random() < 0.5 ? 'cactus' : 'bird'; // 50/50 Chance
+      const type = Math.random() < 0.6 ? 'cactus' : 'bird'; 
       const isBird = type === 'bird';
-      const h = isBird ? 30 : 40; 
-      const w = 20;
-      const y = isBird ? GROUND_Y - 50 : GROUND_Y; // นกบินสูงกว่า
+      
+      // Hitbox adjustment based on Emoji shape
+      const h = isBird ? 30 : 45; 
+      const w = isBird ? 40 : 30; 
+      const y = isBird ? GROUND_Y - (Math.random() * 50 + 20) : GROUND_Y - 5; 
 
       obstacles.push({ x: canvas.width, y, w, h, type });
     };
@@ -50,107 +69,156 @@ export default function Dino() {
       }
     };
 
-    const checkCollision = (rect1, rect2) => {
+    // Hitbox ที่แม่นยำขึ้น (ลดขนาดกล่องเช็คลงนิดหน่อยเพื่อให้แฟร์กับผู้เล่น)
+    const checkCollision = (d, o) => {
+      const padding = 8; 
       return (
-        rect1.x < rect2.x + rect2.w &&
-        rect1.x + rect1.w > rect2.x &&
-        rect1.y < rect2.y + rect2.h &&
-        rect1.y + rect1.h > rect2.y
+        d.x + padding < o.x + o.w - padding &&
+        d.x + d.w - padding > o.x + padding &&
+        d.y + padding < o.y + o.h - padding &&
+        d.y + d.h - padding > o.y + padding
       );
+    };
+
+    const drawEmoji = (emoji, x, y, size) => {
+        ctx.font = `${size}px serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(emoji, x, y);
     };
 
     const loop = (time) => {
       const deltaTime = time - lastTime;
       lastTime = time;
 
-      // 1. Logic Update
+      // --- 1. Update Logic ---
       
+      // Clouds (Parallax)
+      clouds.forEach(c => {
+          c.x -= c.speed;
+          if (c.x < -50) c.x = canvas.width;
+      });
+
       // Dino Physics
       dino.vy += GRAVITY;
       dino.y += dino.vy;
       
-      // Ground check
       if (dino.y >= GROUND_Y) {
         dino.y = GROUND_Y;
         dino.vy = 0;
         dino.isJumping = false;
       }
 
-      // Obstacle Spawning (Randomized)
+      // Spawning
       spawnTimer += deltaTime;
       if (spawnTimer > nextSpawnTime) {
         spawnObstacle();
         spawnTimer = 0;
-        nextSpawnTime = Math.random() * 1500 + 1000 - (gameSpeed * 10); // ยิ่งเร็วยิ่งมาถี่
+        // สูตรคำนวณ: ยิ่งเร็ว ยิ่งเกิดถี่ แต่ไม่ต่ำกว่า 600ms
+        nextSpawnTime = Math.max(600, Math.random() * 1500 + 1000 - (gameSpeed * 20)); 
       }
 
-      // Update Obstacles & Remove off-screen
+      // Move Obstacles
       obstacles.forEach(o => o.x -= gameSpeed);
-      obstacles = obstacles.filter(o => o.x + o.w > 0);
+      obstacles = obstacles.filter(o => o.x + o.w > -50);
 
-      // Check Collision
+      // Collision Detection
       for (let o of obstacles) {
         if (checkCollision(dino, o)) {
-          setFinalScore(Math.floor(scoreRef.current)); // Save score to State
-          setGameState('GAMEOVER'); // Trigger React Re-render
-          return; // Stop Loop
+          const currentScore = Math.floor(scoreRef.current);
+          setScore(currentScore);
+          
+          // Update High Score
+          setHighScore(prev => {
+              const newHigh = Math.max(prev, currentScore);
+              localStorage.setItem('dinoHighScore', newHigh);
+              return newHigh;
+          });
+
+          setGameState('GAMEOVER'); 
+          return; 
         }
       }
 
-      // Update Score & Speed
-      scoreRef.current += 0.1; // เพิ่มทีละนิดให้ดูไหลลื่น
-      if (Math.floor(scoreRef.current) % 100 === 0) {
-        gameSpeed += 0.005; // ค่อยๆ เร็วขึ้น
+      // Score & Speed
+      scoreRef.current += 0.15; 
+      if (Math.floor(scoreRef.current) % 200 === 0) {
+        gameSpeed += 0.02; // Speed up
       }
 
-      // 2. Draw
+      // --- 2. Draw Render ---
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw Ground
+      // Sky Background (Gradient)
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, "#87CEEB"); // Sky Blue
+      gradient.addColorStop(1, "#E0F7FA"); // Light Blue
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Clouds ☁️
+      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+      clouds.forEach(c => {
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, 20, 0, Math.PI * 2);
+          ctx.arc(c.x + 15, c.y - 10, 25, 0, Math.PI * 2);
+          ctx.arc(c.x + 35, c.y, 20, 0, Math.PI * 2);
+          ctx.fill();
+      });
+
+      // Draw Ground 🏜️
+      ctx.fillStyle = "#8D6E63"; // Brown Soil
+      ctx.fillRect(0, GROUND_Y + 40, canvas.width, canvas.height - (GROUND_Y + 40));
+      ctx.strokeStyle = "#5D4037";
       ctx.beginPath();
       ctx.moveTo(0, GROUND_Y + 40);
       ctx.lineTo(canvas.width, GROUND_Y + 40);
-      ctx.strokeStyle = '#555';
-      ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Draw Dino
-      ctx.fillStyle = '#4CAF50'; // Green Dino
-      ctx.fillRect(dino.x, dino.y, dino.w, dino.h);
+      // Draw Dino 🦖
+      drawEmoji('🦖', dino.x, dino.y, 45);
 
       // Draw Obstacles
       obstacles.forEach(o => {
-        ctx.fillStyle = o.type === 'bird' ? '#2196F3' : '#f44336'; // Blue Bird, Red Cactus
-        ctx.fillRect(o.x, o.y, o.w, o.h);
+        if (o.type === 'bird') {
+             drawEmoji('🦅', o.x, o.y, 35);
+        } else {
+             drawEmoji('🌵', o.x, o.y - 5, 45); // Adjust Y for cactus
+        }
       });
 
-      // Draw Score (On Canvas - Efficient!)
-      ctx.fillStyle = '#333';
-      ctx.font = 'bold 20px Arial';
-      ctx.fillText(`Score: ${Math.floor(scoreRef.current)}`, 10, 30);
+      // Draw Score HUD
+      ctx.fillStyle = '#374151';
+      ctx.font = 'bold 24px monospace';
+      ctx.fillText(`SCORE: ${Math.floor(scoreRef.current)}`, 20, 30);
+      
+      // Draw High Score HUD
+      ctx.fillStyle = '#d97706'; // Amber color
+      ctx.font = 'bold 20px monospace';
+      ctx.fillText(`HI: ${Math.max(Math.floor(scoreRef.current), highScore)}`, 20, 60);
 
       requestRef.current = requestAnimationFrame(loop);
     };
 
     // --- Input Handlers ---
     const handleInput = (e) => {
-      if ((e.code === 'Space' || e.code === 'ArrowUp') || e.type === 'click') {
+      if ((e.code === 'Space' || e.code === 'ArrowUp') || e.type === 'touchstart' || e.type === 'mousedown') {
         e.preventDefault();
         jump();
       }
     };
 
     window.addEventListener('keydown', handleInput);
-    canvas.addEventListener('click', handleInput); // Support Click
+    canvas.addEventListener('touchstart', handleInput, { passive: false });
+    canvas.addEventListener('mousedown', handleInput);
 
-    // Start Loop
     requestRef.current = requestAnimationFrame(loop);
 
-    // Cleanup
     return () => {
       cancelAnimationFrame(requestRef.current);
       window.removeEventListener('keydown', handleInput);
-      canvas.removeEventListener('click', handleInput);
+      canvas.removeEventListener('touchstart', handleInput);
+      canvas.removeEventListener('mousedown', handleInput);
     };
   }, [gameState]); // Re-run effect only when gameState changes
 
@@ -160,39 +228,55 @@ export default function Dino() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-4 p-4">
-      <h2 className="text-2xl font-bold text-gray-800">🦖 Super Dino Run</h2>
+    <div className="flex flex-col items-center justify-center min-h-[400px] p-4 bg-slate-100 rounded-xl shadow-lg font-mono">
+      <div className="text-center mb-4">
+        <h2 className="text-3xl font-black text-slate-700 tracking-wider">DINO RUN</h2>
+        <div className="flex gap-4 justify-center mt-2 text-sm font-bold">
+            <span className="text-slate-500">🏆 BEST: {highScore}</span>
+        </div>
+      </div>
       
-      <div className="relative">
+      <div className="relative group">
         <canvas 
           ref={canvasRef} 
-          width={640} 
-          height={320} 
-          className="border-2 border-gray-400 rounded-lg bg-gray-100 shadow-md cursor-pointer"
+          width={700} 
+          height={350} 
+          className="border-4 border-slate-700 rounded-lg shadow-2xl bg-sky-200 cursor-pointer touch-none block max-w-full"
         />
         
         {/* Overlay Menu */}
         {gameState !== 'PLAYING' && (
-          <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center rounded-lg">
+          <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg animate-fade-in z-10">
             {gameState === 'GAMEOVER' && (
-              <div className="text-center mb-4">
-                <h3 className="text-3xl font-bold text-red-500">GAME OVER</h3>
-                <p className="text-white text-xl">Score: {finalScore}</p>
+              <div className="text-center mb-6">
+                <h3 className="text-5xl font-extrabold text-red-500 drop-shadow-md mb-2">GAME OVER</h3>
+                <div className="bg-white/10 p-4 rounded-xl border border-white/20 backdrop-blur-md">
+                    <p className="text-white text-2xl font-bold">Score: {score}</p>
+                    {score >= highScore && score > 0 && (
+                        <p className="text-yellow-400 text-sm mt-1 animate-pulse">✨ NEW HIGH SCORE! ✨</p>
+                    )}
+                </div>
               </div>
             )}
+            
             <button 
               onClick={startGame}
-              className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-full text-lg transition shadow-lg"
+              className="group relative px-8 py-4 bg-green-500 hover:bg-green-400 text-white font-bold rounded-xl text-xl transition-all shadow-[0_4px_0_rgb(21,128,61)] hover:shadow-[0_2px_0_rgb(21,128,61)] active:shadow-none active:translate-y-1"
             >
-              {gameState === 'START' ? 'Start Game' : 'Try Again'}
+              {gameState === 'START' ? '▶ START GAME' : '🔄 TRY AGAIN'}
             </button>
+            
+            <p className="text-slate-400 text-sm mt-6">
+              Press <span className="text-white font-bold border border-slate-500 px-2 py-0.5 rounded bg-slate-800">Space</span> or Click to Jump
+            </p>
           </div>
         )}
       </div>
-
-      <p className="text-gray-500 text-sm">
-        Press <span className="font-bold border px-1 rounded">Space</span> or Click to Jump
-      </p>
+      
+      {/* Decorative footer */}
+      <div className="mt-4 text-slate-400 text-xs text-center">
+        Tip: Watch out for the Eagles! 🦅
+      </div>
     </div>
   );
 }

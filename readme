@@ -1,0 +1,110 @@
+🎮 React Mini-Games Arcade
+คอลเลกชันมินิเกมบนเว็บ (Web-based Mini-games) ที่พัฒนาด้วย React (Vite) และ Tailwind CSS เน้นความลื่นไหลสวยงาม และฝึกทักษะการเขียน Code หลากหลายรูปแบบ ทั้งการจัดการ State, Canvas API, และ CSS Animation 3D
+
+🕹️ รายชื่อเกม (Game List)
+โปรเจกต์นี้ประกอบด้วย 10 เกมคุณภาพ ดังนี้:
+
+1. ❌⭕ Tic-Tac-Toe (XO)
+แนวเกม: Logic / Board
+
+ฟีเจอร์: เล่นกับ Bot หรือเล่นออนไลน์ (Multiplayer Socket.io)
+
+2. 🐍 Neon Snake
+แนวเกม: Classic Arcade
+
+ฟีเจอร์: ธีมนีออน, ความเร็วตามคะแนน, High Score
+
+3. 🦖 Super Dino Run
+แนวเกม: Endless Runner
+
+ฟีเจอร์: ฉากหลัง Parallax, กราฟิก Emoji, ฟิสิกส์การกระโดด
+
+4. 🍉 Fruit Cut
+แนวเกม: Action / Reflex
+
+ฟีเจอร์: Canvas API, เอฟเฟกต์หางดาบ (Blade Trail), ระบบ Combo
+
+5. 🧱 Breakout (Brick Breaker)
+แนวเกม: Arcade / Physics
+
+ฟีเจอร์: เมาส์ควบคุมไม้ตี, ระบบมุมสะท้อนบอล, ด่านอิฐหลากสี
+
+6. 🔨 Whack-a-Ghost
+แนวเกม: Reflex / Speed
+
+ฟีเจอร์: ฝึกปฏิกิริยาไว, ตัวผีสุ่มโผล่เร็วขึ้นเรื่อยๆ
+
+7. ⌨️ Typing Rain
+แนวเกม: Typing / Educational
+
+ฟีเจอร์: ฝึกพิมพ์ดีด, ระบบไฮไลท์คำ, ระดับความยากเพิ่มขึ้น
+
+8. 🃏 Memory Magic
+แนวเกม: Puzzle / Memory
+
+ฟีเจอร์: เอฟเฟกต์พลิกการ์ด 3D, นับจำนวน Turn
+
+9. 🎡 Lucky Wheel
+แนวเกม: Luck / Utility
+
+ฟีเจอร์: วงล้อเสี่ยงโชค, กำหนดผลลัพธ์ได้ (Rigged Logic)
+
+10. 🪙 Coin Flip
+แนวเกม: Luck / Utility
+
+ฟีเจอร์: โยนเหรียญหัวก้อย 3D Animation
+
+🛠 Tech Stack
+Frontend Framework: React 18+ (Vite)
+
+Styling: Tailwind CSS
+
+Graphics: HTML5 Canvas API (สำหรับเกม Snake, Dino, Fruit Cut)
+
+Animation: CSS Keyframes & Transitions
+
+Logic: React Hooks (useState, useEffect, useRef, useMemo)
+
+🚀 วิธีติดตั้งและรัน (Installation)
+Clone โปรเจกต์
+
+Bash
+
+git clone <your-repo-url>
+cd client
+ติดตั้ง dependencies
+
+Bash
+
+npm install
+รันโปรเจกต์
+
+Bash
+
+npm run dev
+เปิด Browser ไปที่ http://localhost:5173
+
+📂 โครงสร้างไฟล์ (Folder Structure)
+Plaintext
+
+src/
+├── games/
+│   ├── TicTacToe.jsx
+│   ├── Snake.jsx
+│   ├── DinoRun.jsx
+│   ├── FruitCut.jsx
+│   ├── Breakout.jsx      # New!
+│   ├── WhackAMole.jsx
+│   ├── TypingRain.jsx
+│   ├── MemoryGame.jsx
+│   ├── LuckyWheel.jsx
+│   └── CoinFlip.jsx
+├── components/
+│   └── GameCard.jsx      # การ์ดสำหรับเลือกเกมในหน้าเมนู
+└── App.jsx               # Routing ไปยังเกมต่างๆ
+📝 หมายเหตุ (Note)
+Tic-Tac-Toe (Multiplayer Mode): ต้องรัน Backend Server (Node.js + Socket.io) ควบคู่ไปด้วย ถึงจะเล่นโหมดออนไลน์ได้
+
+Browser Support: รองรับ Chrome, Edge, Firefox, Safari เวอร์ชั่นปัจจุบัน
+
+Have Fun Coding & Playing! 🎮

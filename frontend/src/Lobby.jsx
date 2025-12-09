@@ -9,6 +9,11 @@ export default function Lobby() {
         <Link className="card" to="/fruitcut"><span className="font-semibold">Fruit Cut</span> — Slice fruits, score up!</Link>
         <Link className="card" to="/dino"><span className="font-semibold">Dino Run</span> — Jump to survive</Link>
         <Link className="card" to="/snakegame"><span className="font-semibold">Snake Game</span> — Eat the apple</Link>
+        <Link className="card" to="/coin"><span className="font-semibold">Coin Flip</span> — Guess heads or tails</Link>
+        <Link className="card" to="/memorygame"><span className="font-semibold">Memory Game</span> — Find matching pairs</Link>
+        <Link className="card" to="/typingrain"><span className="font-semibold">Typing Rain</span> — Type the falling words</Link>
+        <Link className="card" to="/whackamole"><span className="font-semibold">Whack-A-Mole</span> — Hit the moles!</Link>
+        <Link className="card" to="/breakout"><span className="font-semibold">Breakout</span> — Bounce the ball</Link>
       </div>
     </div>
   );

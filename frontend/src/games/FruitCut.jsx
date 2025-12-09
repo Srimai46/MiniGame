@@ -1,132 +1,300 @@
 import { useEffect, useRef, useState } from 'react';
 
+// รายการผลไม้
+const FRUIT_TYPES = [
+  { emoji: '🍉', color: '#ff5252' }, // แตงโม
+  { emoji: '🍊', color: '#ff9800' }, // ส้ม
+  { emoji: '🥝', color: '#76ff03' }, // กีวี่
+  { emoji: '🍎', color: '#ff1744' }, // แอปเปิ้ล
+  { emoji: '🥥', color: '#fff' },    // มะพร้าว
+  { emoji: '🍋', color: '#ffea00' }, // เลมอน
+];
+
+const GAME_DURATION = 60; // 5 นาที
+
 export default function FruitCut() {
   const canvasRef = useRef(null);
+  
+  // Game State
   const [score, setScore] = useState(0);
+  const [missed, setMissed] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
+  
+  // State ควบคุมหน้าจอ
+  const [gameStatus, setGameStatus] = useState('IDLE'); // IDLE, PLAYING, GAME_OVER
+  
+  // Refs
+  const scoreRef = useRef(0);
+  const missedRef = useRef(0);
+  const timeRef = useRef(GAME_DURATION);
+  const requestRef = useRef(null);
+
+  // ฟังก์ชันเริ่มเกม
+  const startGame = () => {
+    scoreRef.current = 0;
+    missedRef.current = 0;
+    timeRef.current = GAME_DURATION;
+    
+    setScore(0);
+    setMissed(0);
+    setTimeLeft(GAME_DURATION);
+    setGameStatus('PLAYING'); // เริ่มรันเกม
+  };
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   useEffect(() => {
+    // ถ้าสถานะไม่ใช่ PLAYING ไม่ต้องรัน Loop เกม
+    if (gameStatus !== 'PLAYING') return;
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
+    
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
 
     let fruits = [];
     let particles = [];
-    let running = true;
+    let trail = [];
     let lastSpawn = 0;
     let lastTime = performance.now();
+    let lastTimerUpdate = performance.now();
 
     const rand = (a, b) => Math.random() * (b - a) + a;
 
     function spawnFruit() {
-      const x = rand(60, canvas.width - 60);
-      const y = canvas.height + 20;
-      const r = rand(14, 24);
-      const vx = rand(-1.5, 1.5);
-      const vy = rand(-18   , -5);
-      fruits.push({ x, y, r, vx, vy, color: 'hsl(' + Math.floor(rand(0, 360)) + ',70%,50%)' });
+      const type = FRUIT_TYPES[Math.floor(rand(0, FRUIT_TYPES.length))];
+      const x = rand(50, rect.width - 50);
+      const y = rect.height + 30;
+      const size = 40;
+      
+      const vx = (rect.width / 2 - x) * 0.005 + rand(-1, 1);
+      const vy = rand(-14, -9);
+      const rot = rand(0, 360);
+      const rotSpeed = rand(-0.1, 0.1);
+
+      fruits.push({ x, y, vx, vy, size, type, rot, rotSpeed });
     }
 
     function spawnParticles(x, y, color) {
-      for (let i = 0; i < 12; i++) {
-        particles.push({ x, y, vx: rand(-3, 3), vy: rand(-3, 3), life: 30, color });
+      for (let i = 0; i < 15; i++) {
+        particles.push({ 
+          x, y, vx: rand(-5, 5), vy: rand(-5, 5), life: 1.0, color, size: rand(2, 6)
+        });
       }
     }
 
+    function drawTrail() {
+      if (trail.length < 2) return;
+      ctx.beginPath();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'white';
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+      
+      ctx.moveTo(trail[0].x, trail[0].y);
+      for (let i = 1; i < trail.length; i++) {
+        ctx.lineWidth = 4 * (i / trail.length);
+        ctx.lineTo(trail[i].x, trail[i].y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
     function step(now) {
-      const dt = (now - lastTime) / 16.7; // ~60fps delta
+      const dt = (now - lastTime) / 16.7;
       lastTime = now;
 
-      if (now - lastSpawn > 800) {
+      // Timer Logic
+      if (now - lastTimerUpdate > 1000) {
+        timeRef.current -= 1;
+        setTimeLeft(timeRef.current);
+        lastTimerUpdate = now;
+
+        if (timeRef.current <= 0) {
+          setGameStatus('GAME_OVER');
+          return; 
+        }
+      }
+
+      // Spawn Logic
+      if (now - lastSpawn > 600) {
         spawnFruit();
         lastSpawn = now;
       }
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, rect.width, rect.height);
 
-      // update fruits
+      // Fruits Logic
+      const fruitsBefore = fruits.length;
       fruits.forEach(f => {
         f.x += f.vx * dt;
         f.y += f.vy * dt;
-        f.vy += 0.25 * dt; // gravity
-        // draw
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-        ctx.fillStyle = f.color;
-        ctx.fill();
+        f.vy += 0.15 * dt;
+        f.rot += f.rotSpeed * dt;
+
+        ctx.save();
+        ctx.translate(f.x, f.y);
+        ctx.rotate(f.rot);
+        ctx.font = '40px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(f.type.emoji, 0, 0);
+        ctx.restore();
       });
 
-      // remove offscreen
-      fruits = fruits.filter(f => f.y - f.r < canvas.height + 50);
+      fruits = fruits.filter(f => f.y < rect.height + 50);
 
-      // particles
+      // Missed Logic
+      const missedCount = fruitsBefore - fruits.length;
+      if (missedCount > 0) {
+        missedRef.current += missedCount;
+        setMissed(missedRef.current);
+      }
+
+      // Particles Logic
       particles.forEach(p => {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        p.life -= 1 * dt;
+        p.vy += 0.2 * dt;
+        p.life -= 0.03 * dt;
+        ctx.globalAlpha = Math.max(0, p.life);
         ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, 3, 3);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
       });
+      ctx.globalAlpha = 1.0;
       particles = particles.filter(p => p.life > 0);
 
-      // hud
-      ctx.fillStyle = '#111';
-      ctx.font = '16px sans-serif';
-      ctx.fillText(`Score: ${score}`, 10, 20);
+      // Trail Logic
+      drawTrail();
+      if (trail.length > 0) trail.shift();
 
-      if (running) requestAnimationFrame(step);
+      requestRef.current = requestAnimationFrame(step);
     }
 
+    // Input Handling
     function sliceAt(x, y) {
-      let sliced = 0;
+      if (timeRef.current <= 0) return;
+      let slicedCount = 0;
       fruits = fruits.filter(f => {
-        const hit = Math.hypot(f.x - x, f.y - y) <= f.r + 6;
+        const hit = Math.hypot(f.x - x, f.y - y) <= 35;
         if (hit) {
-          sliced++;
-          spawnParticles(f.x, f.y, f.color);
+          slicedCount++;
+          spawnParticles(f.x, f.y, f.type.color);
         }
-        return !hit;
+        return !hit; 
       });
-      if (sliced) setScore(s => s + sliced);
-    }
 
-    function getPos(evt) {
-      const rect = canvas.getBoundingClientRect();
-      if (evt.touches && evt.touches[0]) {
-        return {
-          x: evt.touches[0].clientX - rect.left,
-          y: evt.touches[0].clientY - rect.top
-        };
-      } else {
-        return { x: evt.offsetX, y: evt.offsetY };
+      if (slicedCount > 0) {
+        scoreRef.current += slicedCount;
+        setScore(scoreRef.current);
       }
     }
 
-    const onMove = (e) => {
-      const { x, y } = getPos(e);
+    const handleInput = (clientX, clientY) => {
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      trail.push({ x, y });
+      if (trail.length > 12) trail.shift();
       sliceAt(x, y);
     };
 
-    canvas.addEventListener('mousemove', onMove);
-    canvas.addEventListener('touchmove', onMove, { passive: true });
+    const onMouseMove = (e) => handleInput(e.clientX, e.clientY);
+    const onTouchMove = (e) => {
+      if(e.touches[0]) handleInput(e.touches[0].clientX, e.touches[0].clientY);
+    };
 
-    requestAnimationFrame(step);
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('touchmove', onTouchMove, { passive: true });
+
+    requestRef.current = requestAnimationFrame(step);
 
     return () => {
-      running = false;
-      canvas.removeEventListener('mousemove', onMove);
-      canvas.removeEventListener('touchmove', onMove);
+      cancelAnimationFrame(requestRef.current);
+      canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('touchmove', onTouchMove);
     };
-  }, [score]);
+  }, [gameStatus]); // Re-run effect when game status changes
 
   return (
-    <div className="space-y-2">
-      <h2 className="text-xl font-bold">Fruit Cut</h2>
-      <canvas
-        ref={canvasRef}
-        width={600}
-        height={400}
-        className="border rounded"
-      />
-      <p className="text-sm text-gray-600">Drag your mouse or finger to slice fruits.</p>
+    <div className="flex flex-col items-center justify-center min-h-[500px] bg-slate-900 rounded-xl p-4 shadow-2xl">
+      <div className="w-full max-w-[600px] relative">
+        
+        {/* --- Top Bar UI (แสดงเฉพาะตอนเล่น) --- */}
+        {gameStatus === 'PLAYING' && (
+          <div className="absolute top-4 left-0 right-0 z-10 flex justify-between px-6 animate-fade-in">
+            <div className="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full border border-green-500/30">
+              <span className="text-xl font-bold text-green-400">Score: {score}</span>
+            </div>
+            <div className={`px-4 py-2 rounded-full border backdrop-blur-sm font-mono text-xl font-bold ${timeLeft <= 30 ? 'bg-red-900/50 border-red-500 text-red-200 animate-pulse' : 'bg-black/50 border-white/20 text-white'}`}>
+              ⏰ {formatTime(timeLeft)}
+            </div>
+            <div className="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full border border-red-500/30">
+              <span className="text-xl font-bold text-red-400">Missed: {missed}</span>
+            </div>
+          </div>
+        )}
+        
+        {/* --- Canvas --- */}
+        <canvas
+          ref={canvasRef}
+          className="w-full h-[400px] bg-gradient-to-b from-slate-800 to-slate-900 rounded-lg shadow-inner cursor-crosshair touch-none border-2 border-slate-700 block"
+          style={{ width: '100%', height: '400px' }} 
+        />
+        
+        {/* --- 🟢 Start Screen (หน้าเริ่มเกม) --- */}
+        {gameStatus === 'IDLE' && (
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg z-50">
+            <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 mb-2 drop-shadow-lg">
+              FRUIT CUT
+            </h1>
+            <p className="text-gray-300 text-lg mb-8">Slice fruits, avoid dropping them!</p>
+            
+            <button 
+              onClick={startGame}
+              className="px-10 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-bold text-2xl rounded-full shadow-lg transition transform hover:scale-105 active:scale-95"
+            >
+              ▶ START GAME
+            </button>
+          </div>
+        )}
+
+        {/* --- 🔴 Game Over Screen (หน้าจบเกม) --- */}
+        {gameStatus === 'GAME_OVER' && (
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg z-50">
+            <h2 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-4 drop-shadow-lg">
+              TIME'S UP!
+            </h2>
+            <div className="bg-slate-800 p-6 rounded-xl border border-slate-600 text-center space-y-2 shadow-2xl transform scale-110 mb-8">
+              <p className="text-gray-400 text-lg">Final Score</p>
+              <p className="text-6xl font-bold text-white mb-2">{score}</p>
+              <div className="flex justify-center gap-4 text-sm text-gray-400 border-t border-slate-700 pt-3 mt-3">
+                 <span>❌ Missed: <b className="text-red-400">{missed}</b></span>
+                 <span>⚔️ Precision: <b className="text-green-400">{score + missed > 0 ? Math.round((score / (score + missed)) * 100) : 0}%</b></span>
+              </div>
+            </div>
+            
+            <button 
+              onClick={startGame}
+              className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-bold text-xl rounded-full shadow-lg transition transform hover:scale-105 active:scale-95"
+            >
+              🔄 Play Again
+            </button>
+          </div>
+        )}
+
+      </div>
     </div>
   );
-}
+} 
