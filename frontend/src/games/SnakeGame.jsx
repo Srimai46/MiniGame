@@ -11,7 +11,6 @@ export default function Snake() {
   // Refs for Game Logic
   const scoreRef = useRef(0);
   const requestRef = useRef();
-<<<<<<< HEAD
   const directionRef = useRef({ x: 1, y: 0 }); 
   const nextDirectionRef = useRef({ x: 1, y: 0 }); 
 
@@ -19,9 +18,6 @@ export default function Snake() {
     const savedScore = localStorage.getItem('snakeHighScore');
     if (savedScore) setHighScore(parseInt(savedScore));
   }, []);
-=======
-  const canChangeDirection = useRef(true);
->>>>>>> a44066428c93f126101044c646bb1766b43b14c2
 
   useEffect(() => {
     if (gameState !== 'PLAYING') return;
@@ -34,15 +30,9 @@ export default function Snake() {
     const tileCount = 20; // 400px / 20px
     const canvasSize = gridSize * tileCount;
 
-<<<<<<< HEAD
     // Game Variables
     let snake = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }]; 
     let food = spawnFood(snake);
-=======
-    let snake = [{ x: 10, y: 10 }];
-    let direction = { x: 1, y: 0 };
-    let food = generateFood();
->>>>>>> a44066428c93f126101044c646bb1766b43b14c2
     let lastTime = performance.now();
     let moveTimer = 0;
     
@@ -52,48 +42,18 @@ export default function Snake() {
     directionRef.current = { x: 1, y: 0 };
     nextDirectionRef.current = { x: 1, y: 0 };
 
-<<<<<<< HEAD
     function spawnFood(currentSnake) {
       let newFood;
       while (true) {
-=======
-    function generateFood() {
-      let newFood;
-      let isOnSnake;
-
-      do {
-        isOnSnake = false;
->>>>>>> a44066428c93f126101044c646bb1766b43b14c2
         newFood = {
           x: Math.floor(Math.random() * tileCount),
           y: Math.floor(Math.random() * tileCount),
         };
-<<<<<<< HEAD
         const isOnSnake = currentSnake.some(seg => seg.x === newFood.x && seg.y === newFood.y);
         if (!isOnSnake) break;
       }
       return newFood;
     }
-=======
-
-        for (let segment of snake) {
-          if (segment.x === newFood.x && segment.y === newFood.y) {
-            isOnSnake = true;
-            break;
-          }
-        }
-      } while (isOnSnake);
-
-      return newFood;
-    }
-
-    const resetGame = () => {
-      snake = [{ x: 10, y: 10 }];
-      direction = { x: 1, y: 0 };
-      food = generateFood();
-      scoreRef.current = 0;
-    };
->>>>>>> a44066428c93f126101044c646bb1766b43b14c2
 
     const handleInput = (e) => {
       const key = e.code;
@@ -142,20 +102,11 @@ export default function Snake() {
 
         if (head.x === food.x && head.y === food.y) {
           scoreRef.current += 1;
-<<<<<<< HEAD
           setScore(scoreRef.current); 
           food = spawnFood(snake);
-=======
-          food = generateFood();
->>>>>>> a44066428c93f126101044c646bb1766b43b14c2
         } else {
           snake.pop(); 
         }
-<<<<<<< HEAD
-=======
-
-        canChangeDirection.current = true;
->>>>>>> a44066428c93f126101044c646bb1766b43b14c2
       }
 
       ctx.fillStyle = '#0f172a'; 
