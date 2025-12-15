@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import axios from "axios"; // <--- 1. เพิ่ม axios
 
 export default function Dino() {
   const canvasRef = useRef(null);
@@ -49,6 +50,26 @@ export default function Dino() {
     let nextSpawnTime = Math.random() * 1000 + 1500;
 
     // --- Functions ---
+
+    // --- 2. ฟังก์ชันบันทึกคะแนน ---
+    const saveScoreToDB = async (currentScore) => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        await axios.post("http://localhost:4000/api/score", 
+          { 
+            game: "dino", // ชื่อเกมต้องตรงกับ DB
+            score: currentScore 
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log("Score saved:", currentScore);
+      } catch (error) {
+        console.error("Failed to save score:", error);
+      }
+    };
+    // ----------------------------
 
     const spawnObstacle = () => {
       const type = Math.random() < 0.6 ? 'cactus' : 'bird'; 
@@ -127,6 +148,10 @@ export default function Dino() {
         if (checkCollision(dino, o)) {
           const currentScore = Math.floor(scoreRef.current);
           setScore(currentScore);
+          
+          // --- 3. เรียกใช้บันทึกคะแนนตรงนี้ ---
+          saveScoreToDB(currentScore);
+          // ---------------------------------
           
           // Update High Score
           setHighScore(prev => {

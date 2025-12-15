@@ -14,6 +14,8 @@ export default function Lobby() {
         <Link className="card" to="/typingrain"><span className="font-semibold">Typing Rain</span> — Type the falling words</Link>
         <Link className="card" to="/whackamole"><span className="font-semibold">Whack-A-Mole</span> — Hit the moles!</Link>
         <Link className="card" to="/breakout"><span className="font-semibold">Breakout</span> — Bounce the ball</Link>
+        <Link className="card" to="/minesweeper"><span className="font-semibold">Minesweeper</span> — Clear the minefield</Link>
+        <Link className="card" to="/game2048"><span className="font-semibold">2048</span> — Slide to combine numbers</Link>
       </div>
     </div>
   );

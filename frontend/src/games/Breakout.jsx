@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import axios from "axios";
 
 export default function Breakout() {
   const canvasRef = useRef(null);
@@ -41,7 +42,10 @@ export default function Breakout() {
     let y = canvas.height - 30;
     let dx = 4;
     let dy = -4;
+    
+    // กำหนดค่าเริ่มต้น paddleX แค่ครั้งแรก (ถ้าจะให้จำตำแหน่งเดิมต้องใช้ Ref แต่ใน Loop นี้ใช้ตัวแปร local ได้เพราะเราไม่ได้ reset มัน)
     let paddleX = (canvas.width - paddleWidth) / 2;
+    
     let currentLives = 3;
 
     // Create Bricks
@@ -52,6 +56,23 @@ export default function Breakout() {
         bricks[c][r] = { x: 0, y: 0, status: 1, color: `hsl(${c * 40 + r * 20}, 70%, 60%)` };
       }
     }
+
+    const saveScoreToDB = async (currentScore) => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        await axios.post("http://localhost:4000/api/score", 
+          { 
+            game: "breakout", 
+            score: currentScore 
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (error) {
+        console.error("Failed to save score:", error);
+      }
+    };
 
     const keyDownHandler = (e) => {
       if (e.key === 'Right' || e.key === 'ArrowRight') {
@@ -82,11 +103,10 @@ export default function Breakout() {
               y < b.y + brickHeight
             ) {
               dy = -dy;
-              b.status = 0; // Destroy brick
+              b.status = 0; 
               scoreRef.current += 10;
               setScore(scoreRef.current);
               
-              // เพิ่มความเร็วเล็กน้อยเมื่อตีโดน
               if (scoreRef.current % 50 === 0) {
                  dx = dx > 0 ? dx + 0.5 : dx - 0.5;
                  dy = dy > 0 ? dy + 0.5 : dy - 0.5;
@@ -97,28 +117,18 @@ export default function Breakout() {
       }
       
       if (activeBricks === 0) {
+        saveScoreToDB(scoreRef.current);
         setGameState('WON');
         cancelAnimationFrame(requestRef.current);
       }
     };
 
-    const drawBall = () => {
-      ctx.beginPath();
-      ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
-      ctx.fillStyle = '#facc15'; // Yellow ball
-      ctx.fill();
-      ctx.closePath();
-    };
+    const draw = () => {
+      if (gameState !== 'PLAYING') return;
 
-    const drawPaddle = () => {
-      ctx.beginPath();
-      ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
-      ctx.fillStyle = '#38bdf8'; // Sky Blue Paddle
-      ctx.fill();
-      ctx.closePath();
-    };
-
-    const drawBricks = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw Bricks
       for (let c = 0; c < brickColumnCount; c++) {
         for (let r = 0; r < brickRowCount; r++) {
           if (bricks[c][r].status === 1) {
@@ -126,7 +136,6 @@ export default function Breakout() {
             const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
             bricks[c][r].x = brickX;
             bricks[c][r].y = brickY;
-            
             ctx.beginPath();
             ctx.rect(brickX, brickY, brickWidth, brickHeight);
             ctx.fillStyle = bricks[c][r].color;
@@ -135,43 +144,45 @@ export default function Breakout() {
           }
         }
       }
-    };
 
-    const draw = () => {
-      if (gameState !== 'PLAYING') return;
+      // Draw Ball
+      ctx.beginPath();
+      ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#facc15'; 
+      ctx.fill();
+      ctx.closePath();
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawBricks();
-      drawBall();
-      drawPaddle();
+      // Draw Paddle
+      ctx.beginPath();
+      ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+      ctx.fillStyle = '#38bdf8'; 
+      ctx.fill();
+      ctx.closePath();
+      
       collisionDetection();
 
       // Ball Movement Logic
-      if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
-        dx = -dx;
-      }
-      if (y + dy < ballRadius) {
-        dy = -dy;
-      } else if (y + dy > canvas.height - ballRadius) {
+      if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
+      if (y + dy < ballRadius) dy = -dy;
+      else if (y + dy > canvas.height - ballRadius) {
         if (x > paddleX && x < paddleX + paddleWidth) {
-          // Paddle Hit Logic (เพิ่มมุมสะท้อนตามตำแหน่งที่โดนไม้)
           let collidePoint = x - (paddleX + paddleWidth/2);
           collidePoint = collidePoint / (paddleWidth/2);
-          
-          let angle = collidePoint * (Math.PI/3); // Max angle 60 degrees
+          let angle = collidePoint * (Math.PI/3); 
           let speed = Math.sqrt(dx*dx + dy*dy);
-          
           dx = speed * Math.sin(angle);
           dy = -speed * Math.cos(angle);
         } else {
-          // Dead
+          // --- Life Lost Logic ---
           currentLives--;
           setLives(currentLives);
+          
           if (currentLives === 0) {
-            // High Score Check
-            const currentScore = scoreRef.current;
+            // Game Over
+            const finalScore = scoreRef.current;
+            saveScoreToDB(finalScore);
             setHighScore(prev => {
-                const newHigh = Math.max(prev, currentScore);
+                const newHigh = Math.max(prev, finalScore);
                 localStorage.setItem('breakoutHighScore', newHigh);
                 return newHigh;
             });
@@ -179,26 +190,23 @@ export default function Breakout() {
             cancelAnimationFrame(requestRef.current);
             return;
           } else {
-            // Reset Ball
+            // Reset Ball Only (ไม่ Reset PaddleX แล้ว)
             x = canvas.width / 2;
             y = canvas.height - 30;
             dx = 4;
             dy = -4;
-            paddleX = (canvas.width - paddleWidth) / 2;
+            // paddleX = (canvas.width - paddleWidth) / 2; <--- เอาบรรทัดนี้ออกเพื่อให้ฐานอยู่ที่เดิม
           }
         }
       }
 
       x += dx;
       y += dy;
-      
       requestRef.current = requestAnimationFrame(draw);
     };
 
-    // Event Listeners
     document.addEventListener('keydown', keyDownHandler, false);
-    document.addEventListener('mousemove', mouseMoveHandler, false); // ใช้เมาส์เลื่อนได้
-
+    document.addEventListener('mousemove', mouseMoveHandler, false); 
     draw();
 
     return () => {
@@ -216,24 +224,25 @@ export default function Breakout() {
   };
 
   return (
-    <div className="bg-slate-900 flex flex-col items-center justify-center p-6 rounded-2xl shadow-2xl max-w-2xl mx-auto font-sans text-white relative">
+    <div className="max-w-2xl mx-auto mt-8 p-6 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 font-sans text-white">
+      
       {/* Header */}
-      <div className="w-full flex justify-between items-center mb-4 px-4">
+      <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">🧱 BREAKOUT</h1>
-        <div className="flex gap-4 font-mono text-sm">
-            <div className="bg-slate-800 px-3 py-1 rounded border border-slate-700">SCORE: <span className="text-yellow-400">{score}</span></div>
-            <div className="bg-slate-800 px-3 py-1 rounded border border-slate-700">LIVES: <span className="text-red-400">{'❤️'.repeat(lives)}</span></div>
-            <div className="bg-slate-800 px-3 py-1 rounded border border-slate-700">BEST: <span className="text-green-400">{highScore}</span></div>
+        <div className="flex gap-4 text-sm font-mono font-bold">
+            <div className="bg-slate-900 px-3 py-1 rounded border border-slate-700">SCORE: <span className="text-yellow-400">{score}</span></div>
+            <div className="bg-slate-900 px-3 py-1 rounded border border-slate-700">LIVES: <span className="text-red-400">{'❤️'.repeat(lives)}</span></div>
+            <div className="bg-slate-900 px-3 py-1 rounded border border-slate-700">BEST: <span className="text-green-400">{highScore}</span></div>
         </div>
       </div>
 
-      {/* Canvas */}
-      <div className="relative border-b-4 border-slate-700 rounded-lg overflow-hidden bg-slate-800 shadow-inner">
+      {/* Canvas Wrapper */}
+      <div className="relative border border-slate-700 rounded-xl overflow-hidden bg-slate-900 shadow-inner flex justify-center">
         <canvas
           ref={canvasRef}
           width={560}
           height={400}
-          className="block cursor-none" // ซ่อน Cursor เวลาเล่น
+          className="block cursor-none max-w-full" 
         />
 
         {/* Overlay */}
@@ -254,14 +263,14 @@ export default function Breakout() {
             
             <button
               onClick={startGame}
-              className="px-10 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-2xl rounded-full shadow-lg transition transform hover:scale-105 active:scale-95"
+              className="px-10 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:scale-105 text-white font-bold text-2xl rounded-full shadow-lg transition"
             >
               {gameState === 'START' ? '▶ START GAME' : '🔄 PLAY AGAIN'}
             </button>
-            <p className="mt-6 text-slate-500 text-sm">Move mouse to control the paddle</p>
           </div>
         )}
       </div>
+      <p className="mt-4 text-slate-500 text-sm text-center">Move mouse to control the paddle</p>
     </div>
   );
 }

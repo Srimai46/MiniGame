@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import axios from "axios"; // <--- 1. อย่าลืม import axios
 
 // รายการผลไม้
 const FRUIT_TYPES = [
@@ -10,7 +11,7 @@ const FRUIT_TYPES = [
   { emoji: '🍋', color: '#ffea00' }, // เลมอน
 ];
 
-const GAME_DURATION = 60; // 5 นาที
+const GAME_DURATION = 60; // 60 วินาที
 
 export default function FruitCut() {
   const canvasRef = useRef(null);
@@ -28,6 +29,26 @@ export default function FruitCut() {
   const missedRef = useRef(0);
   const timeRef = useRef(GAME_DURATION);
   const requestRef = useRef(null);
+
+  // --- 2. เพิ่มฟังก์ชันบันทึกคะแนน ---
+  const saveScoreToDB = async (finalScore) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      await axios.post("http://localhost:4000/api/score", 
+        { 
+          game: "fruitcut", // ชื่อเกมต้องตรงกับใน Database และ Config
+          score: finalScore 
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log("Score saved:", finalScore);
+    } catch (error) {
+      console.error("Failed to save score:", error);
+    }
+  };
+  // ---------------------------------
 
   // ฟังก์ชันเริ่มเกม
   const startGame = () => {
@@ -121,6 +142,9 @@ export default function FruitCut() {
         lastTimerUpdate = now;
 
         if (timeRef.current <= 0) {
+          // --- 3. บันทึกคะแนนเมื่อหมดเวลา ---
+          saveScoreToDB(scoreRef.current);
+          // ------------------------------
           setGameStatus('GAME_OVER');
           return; 
         }
@@ -237,7 +261,7 @@ export default function FruitCut() {
             <div className="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full border border-green-500/30">
               <span className="text-xl font-bold text-green-400">Score: {score}</span>
             </div>
-            <div className={`px-4 py-2 rounded-full border backdrop-blur-sm font-mono text-xl font-bold ${timeLeft <= 30 ? 'bg-red-900/50 border-red-500 text-red-200 animate-pulse' : 'bg-black/50 border-white/20 text-white'}`}>
+            <div className={`px-4 py-2 rounded-full border backdrop-blur-sm font-mono text-xl font-bold ${timeLeft <= 10 ? 'bg-red-900/50 border-red-500 text-red-200 animate-pulse' : 'bg-black/50 border-white/20 text-white'}`}>
               ⏰ {formatTime(timeLeft)}
             </div>
             <div className="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full border border-red-500/30">
@@ -297,4 +321,4 @@ export default function FruitCut() {
       </div>
     </div>
   );
-} 
+}
