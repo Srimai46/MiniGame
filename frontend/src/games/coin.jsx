@@ -25,7 +25,7 @@ export default function Coin() {
 
       // บันทึกเฉพาะเมื่อ Streak ปัจจุบัน มากกว่าหรือเท่ากับสถิติสูงสุด
       // หรือจะบันทึกทุกครั้งที่ทายถูกก็ได้ (แต่แบบนี้ประหยัด Request กว่า)
-      await axios.post("http://localhost:4000/api/score", 
+      await axios.post("/api/score", 
         { 
           game: "coin", // ชื่อเกมต้องตรงกับใน MyStats
           score: currentStreak 

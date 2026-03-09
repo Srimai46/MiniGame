@@ -57,7 +57,7 @@ export default function Game2048() {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      await axios.post("http://localhost:4000/api/score", 
+      await axios.post("/api/score", 
         { 
           game: "game2048", 
           score: currentScore 

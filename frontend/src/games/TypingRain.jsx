@@ -15,7 +15,7 @@ async function saveScoreToDB(finalScore) {
     const token = localStorage.getItem("token");
     if (!token) return;
     await axios.post(
-      "http://localhost:4000/api/score",
+      "/api/score",
       { game: "typing", score: finalScore },
       { headers: { Authorization: `Bearer ${token}` } }
     );

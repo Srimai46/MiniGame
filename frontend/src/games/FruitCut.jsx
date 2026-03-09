@@ -36,7 +36,7 @@ export default function FruitCut() {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      await axios.post("http://localhost:4000/api/score", 
+      await axios.post("/api/score", 
         { 
           game: "fruitcut", // ชื่อเกมต้องตรงกับใน Database และ Config
           score: finalScore 

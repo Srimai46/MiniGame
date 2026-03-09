@@ -62,7 +62,7 @@ export default function Breakout() {
         const token = localStorage.getItem("token");
         if (!token) return;
 
-        await axios.post("http://localhost:4000/api/score", 
+        await axios.post("/api/score", 
           { 
             game: "breakout", 
             score: currentScore 

@@ -16,7 +16,7 @@ export default function Register() {
     setError('');
     
     try {
-      await axios.post('http://localhost:4000/api/auth/register', form);
+      await axios.post('/api/auth/register', form);
       alert('Account Created! Please Login.');
       navigate('/login');
     } catch (err) {

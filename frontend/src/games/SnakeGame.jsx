@@ -61,7 +61,7 @@ export default function Snake() {
         const token = localStorage.getItem("token");
         if (!token) return;
         await axios.post(
-          "http://localhost:4000/api/score",
+          "/api/score",
           { game: "snake", score },
           { headers: { Authorization: `Bearer ${token}` } }
         );

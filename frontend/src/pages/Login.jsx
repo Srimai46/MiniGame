@@ -16,8 +16,8 @@ export default function Login() {
     setError('');
     
     try {
-      // ยิง API ไปที่ Backend Port 4000
-      const res = await axios.post('http://localhost:4000/api/auth/login', form);
+      // ยิง API ไปที่ Backend Port 4000 ผ่าน Vite Proxy
+      const res = await axios.post('/api/auth/login', form);
       
       // ถ้าสำเร็จ: เก็บ Token และ Username ลงเครื่อง
       localStorage.setItem('token', res.data.token);

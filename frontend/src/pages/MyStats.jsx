@@ -33,7 +33,7 @@ export default function MyStats() {
       // -----------------------------------------------------------
       // 🛠️ แก้ไขจุดที่ 1: เปลี่ยน URL ให้มี /score ตาม server.js
       // -----------------------------------------------------------
-      const res = await axios.get("http://localhost:4000/api/score/my-stats", {
+      const res = await axios.get("/api/score/my-stats", {
         headers: { Authorization: `Bearer ${token}` },
       });
 

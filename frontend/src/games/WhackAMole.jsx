@@ -27,7 +27,7 @@ export default function WhackAMole() {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      await axios.post("http://localhost:4000/api/score", 
+      await axios.post("/api/score", 
         { 
           game: "whackamole", // ชื่อเกมสำหรับ DB
           score: finalScore 

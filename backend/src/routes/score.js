@@ -6,7 +6,7 @@ const authenticateToken = require('../middleware/auth');
 const prisma = new PrismaClient();
 
 // รายชื่อเกมที่ "ค่าน้อย = ดี" (เช่น เกมจับเวลา)
-const LOW_SCORE_GAMES = ['minesweeper', 'memory', 'breakout'];
+const LOW_SCORE_GAMES = ['minesweeper', 'memory'];
 
 // ========================================================
 // 1. POST: บันทึกคะแนน (Save Score)

@@ -28,7 +28,7 @@ export default function MemoryGame() {
       if (!token) return;
 
       // บันทึก Turns ลงในช่อง score
-      await axios.post("http://localhost:4000/api/score", 
+      await axios.post("/api/score", 
         { 
           game: "memory", // ชื่อเกมต้องตรงกับ DB
           score: finalTurns 
